@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Chatdown — Turn your Google AI Mode chats into clean Markdown</title>
+  <meta name="description" content="Chatdown turns your saved Google AI Mode (Gemini) conversations into a clean, readable chat you can export as Markdown — runs 100% in your browser, nothing uploaded.">
+  <meta name="color-scheme" content="light dark">
+  <style>
+    :root {
+      --bg: #f5f5f5;
+      --bg-header: rgba(245, 245, 245, 0.92);
+      --text: #1a1a1a;
+      --text-muted: #888;
+      --border: #e0e0e0;
+      --user-bubble: #007aff;
+      --user-text: #fff;
+      --ai-bubble: #e9e9eb;
+      --ai-text: #1a1a1a;
+      --code-bg: #1e1e1e;
+      --code-text: #d4d4d4;
+      --inline-code-bg: rgba(0, 0, 0, 0.06);
+      --mark-bg: #fff3cd;
+      --drop-border: #ccc;
+      --drop-hover-border: #007aff;
+      --drop-hover-bg: #e8f0fe;
+      --btn-bg: #007aff;
+      --btn-hover: #0056cc;
+      --btn-copied: #34c759;
+      --toggle-bg: transparent;
+      --toggle-hover: rgba(0, 0, 0, 0.08);
+      --toggle-icon: #555;
+    }
+
+    [data-theme="dark"] {
+      --bg: #1a1a1a;
+      --bg-header: rgba(26, 26, 26, 0.92);
+      --text: #e5e5e7;
+      --text-muted: #999;
+      --border: #333;
+      --user-bubble: #0a84ff;
+      --user-text: #fff;
+      --ai-bubble: #2c2c2e;
+      --ai-text: #e5e5e7;
+      --code-bg: #0d0d0d;
+      --code-text: #d4d4d4;
+      --inline-code-bg: rgba(255, 255, 255, 0.1);
+      --mark-bg: #5a4a00;
+      --drop-border: #444;
+      --drop-hover-border: #0a84ff;
+      --drop-hover-bg: #1c2d3f;
+      --btn-bg: #0a84ff;
+      --btn-hover: #0066d6;
+      --btn-copied: #30d158;
+      --toggle-bg: transparent;
+      --toggle-hover: rgba(255, 255, 255, 0.1);
+      --toggle-icon: #ccc;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      transition: background 0.3s, color 0.3s;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* === Drop Zone === */
+    #dropzone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 40px);
+      min-height: calc(100dvh - 40px);
+      border: 3px dashed var(--drop-border);
+      border-radius: 20px;
+      margin: 20px;
+      padding: 24px;
+      transition: border-color 0.2s, background-color 0.2s;
+      user-select: none;
+      text-align: center;
+    }
+
+    #dropzone.dragover {
+      border-color: var(--drop-hover-border);
+      background-color: var(--drop-hover-bg);
+    }
+
+    #dropzone .brand-name {
+      font-size: 2.1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    #dropzone .brand-tagline {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 32px;
+      padding: 0 16px;
+    }
+
+    #dropzone .drop-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.4;
+    }
+
+    #dropzone h2 {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 1.2rem;
+      padding: 0 16px;
+    }
+
+    #dropzone p {
+      color: var(--text-muted);
+      margin-top: 8px;
+      font-size: 0.85rem;
+      opacity: 0.7;
+      padding: 0 16px;
+    }
+
+    #file-input { display: none; }
+
+    [hidden] { display: none !important; }
+
+    #browse-btn {
+      margin-top: 20px;
+      padding: 12px 28px;
+      background: var(--btn-bg);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #browse-btn:hover { background: var(--btn-hover); }
+    #browse-btn:active { transform: scale(0.97); }
+
+    /* === Chat Container === */
+    #chat-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    /* === Chat Header === */
+    #chat-header {
+      position: sticky;
+      top: 0;
+      background: var(--bg-header);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 12px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      z-index: 10;
+      transition: background 0.3s;
+    }
+
+    #back-btn {
+      padding: 6px 10px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s, border-color 0.2s;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #back-btn:hover {
+      background: var(--toggle-hover);
+      border-color: var(--text-muted);
+    }
+
+    #chat-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    #copy-md-btn {
+      padding: 7px 12px;
+      background: var(--btn-bg);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #copy-md-btn:hover { background: var(--btn-hover); }
+    #copy-md-btn.copied { background: var(--btn-copied); }
+
+    #theme-toggle,
+    #download-md-btn {
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      background: var(--toggle-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, border-color 0.2s;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #theme-toggle:hover,
+    #download-md-btn:hover {
+      background: var(--toggle-hover);
+      border-color: var(--text-muted);
+    }
+
+    #theme-toggle svg,
+    #download-md-btn svg {
+      width: 17px;
+      height: 17px;
+      color: var(--toggle-icon);
+      transition: color 0.3s;
+    }
+
+    .sun-icon { display: none; }
+    .moon-icon { display: block; }
+
+    [data-theme="dark"] .sun-icon { display: block; }
+    [data-theme="dark"] .moon-icon { display: none; }
+
+    /* === Messages === */
+    #chat-messages {
+      padding: 20px 0 80px;
+    }
+
+    /* === Parse Notice (best-effort banner) === */
+    #parse-notice {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: var(--mark-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+
+    #parse-notice-text { flex: 1; min-width: 0; }
+
+    #parse-notice-close {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: 6px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #parse-notice-close:hover { background: var(--toggle-hover); }
+
+    .message {
+      max-width: 85%;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message.user {
+      margin-left: auto;
+      align-items: flex-end;
+    }
+
+    .message.ai {
+      margin-right: auto;
+      align-items: flex-start;
+    }
+
+    .sender {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+      padding: 0 6px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .bubble {
+      padding: 10px 16px;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      transition: background 0.3s, color 0.3s;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .message.user .bubble {
+      background: var(--user-bubble);
+      color: var(--user-text);
+      border-radius: 18px 18px 4px 18px;
+    }
+
+    .message.ai .bubble {
+      background: var(--ai-bubble);
+      color: var(--ai-text);
+      border-radius: 18px 18px 18px 4px;
+      padding: 14px 18px;
+    }
+
+    /* === Response Formatting === */
+    .message.ai .bubble h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 14px 0 6px;
+      color: var(--ai-text);
+    }
+
+    .message.ai .bubble h3:first-child { margin-top: 0; }
+
+    .message.ai .bubble strong { font-weight: 600; }
+
+    .message.ai .bubble ul,
+    .message.ai .bubble ol {
+      margin: 8px 0;
+      padding-left: 22px;
+    }
+
+    .message.ai .bubble li { margin-bottom: 4px; }
+
+    .message.ai .bubble p {
+      margin: 8px 0;
+    }
+
+    .message.ai .bubble p:first-child { margin-top: 0; }
+    .message.ai .bubble p:last-child { margin-bottom: 0; }
+
+    .message.ai .bubble mark {
+      background: var(--mark-bg);
+      padding: 1px 3px;
+      border-radius: 3px;
+      color: var(--ai-text);
+    }
+
+    .message.ai .bubble pre {
+      background: var(--code-bg);
+      color: var(--code-text);
+      border-radius: 8px;
+      padding: 12px;
+      overflow-x: auto;
+      margin: 10px 0;
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    .message.ai .bubble code {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+      font-size: 0.85em;
+    }
+
+    .message.ai .bubble code:not(pre code) {
+      background: var(--inline-code-bg);
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+
+    .message.ai .bubble a {
+      color: var(--user-bubble);
+      text-decoration: none;
+    }
+
+    .message.ai .bubble a:hover {
+      text-decoration: underline;
+    }
+
+    .message.ai .bubble table {
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 0.9em;
+      width: 100%;
+    }
+
+    .message.ai .bubble th,
+    .message.ai .bubble td {
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      text-align: left;
+    }
+
+    .message.ai .bubble th {
+      font-weight: 600;
+    }
+
+    /* === Responsive === */
+    @media (max-width: 600px) {
+      #dropzone {
+        margin: 10px;
+        min-height: calc(100vh - 20px);
+        min-height: calc(100dvh - 20px);
+        border-radius: 14px;
+      }
+
+      #dropzone .drop-icon { font-size: 40px; }
+      #dropzone h2 { font-size: 1rem; }
+      #dropzone p { font-size: 0.8rem; }
+
+      .message { max-width: 92%; }
+
+      #chat-container { padding: 0 10px; }
+
+      #chat-header {
+        padding: 10px 0;
+        gap: 5px;
+      }
+
+      #chat-title { font-size: 0.85rem; }
+
+      #copy-md-btn {
+        padding: 6px 8px;
+        font-size: 0.72rem;
+      }
+
+      #back-btn {
+        padding: 5px 8px;
+        font-size: 0.78rem;
+      }
+
+      #theme-toggle,
+      #download-md-btn {
+        width: 30px;
+        height: 30px;
+      }
+
+      #theme-toggle svg,
+      #download-md-btn svg {
+        width: 15px;
+        height: 15px;
+      }
+
+      .bubble { font-size: 0.9rem; }
+
+      .message.ai .bubble {
+        padding: 12px 14px;
+      }
+
+      .message.ai .bubble pre {
+        font-size: 0.78rem;
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="dropzone">
+    <h1 class="brand-name">Chatdown</h1>
+    <p class="brand-tagline">Turn your Google AI Mode chats into clean Markdown</p>
+    <div class="drop-icon">&#128196;</div>
+    <h2>Drop your saved Google AI Mode page here</h2>
+    <p>Save your Google AI Mode chat as "Web Page, Complete" then drop the .html file here</p>
+    <button id="browse-btn">Browse Files</button>
+    <input type="file" id="file-input" accept=".html,.htm">
+  </div>
+
+  <div id="chat-container" hidden>
+    <header id="chat-header">
+      <button id="back-btn">&#8592; Back</button>
+      <h1 id="chat-title"></h1>
+      <div class="header-actions">
+        <button id="copy-md-btn">Copy as Markdown</button>
+        <button id="download-md-btn" aria-label="Download as Markdown" title="Download as Markdown">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </button>
+        <button id="theme-toggle" aria-label="Toggle dark mode">
+          <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+      <div id="parse-notice" hidden>
+        <span id="parse-notice-text"></span>
+        <button id="parse-notice-close" aria-label="Dismiss notice">&times;</button>
+      </div>
+    <div id="chat-messages"></div>
+  </div>
+
+  <script>
+    // ========== STATE ==========
+    let parsedConversation = [];
+    let chatTitle = '';
+
+    // ========== DEBUG LOGGING ==========
+    // Flip to true while developing to print parse diagnostics; off for the
+    // hosted build so the console stays clean for visitors.
+    const DEBUG = false;
+    function log(...args) { if (DEBUG) console.log.apply(console, args); }
+
+    // ========== THEME ==========
+    function initTheme() {
+      const saved = localStorage.getItem('chatdown-theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('chatdown-theme', next);
+    }
+
+    initTheme();
+    document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+
+    // ========== DROP ZONE ==========
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+
+    // Prevent default drag behavior on the whole page
+    document.addEventListener('dragover', e => e.preventDefault());
+    document.addEventListener('drop', e => e.preventDefault());
+
+    // Dropzone drag visual feedback
+    dropzone.addEventListener('dragenter', e => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+    });
+
+    // Single drop handler — handles everything
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      log('[Chatdown] Drop event fired, files:', e.dataTransfer.files.length);
+
+      const files = e.dataTransfer.files;
+      if (files.length === 0) {
+        log('[Chatdown] No files in drop event');
+        return;
+      }
+
+      // Find the HTML file — user might drop the folder + file together
+      let htmlFile = null;
+      for (let i = 0; i < files.length; i++) {
+        if (files[i].name.match(/\.html?$/i)) {
+          htmlFile = files[i];
+          break;
+        }
+      }
+
+      if (htmlFile) {
+        log('[Chatdown] Found HTML file:', htmlFile.name, 'size:', htmlFile.size);
+        handleFile(htmlFile);
+      } else {
+        log('[Chatdown] No HTML file found in dropped files');
+        alert('No HTML file found. Please drop the saved .html file (not the folder).');
+      }
+    });
+
+    // Browse button & file input
+    document.getElementById('browse-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', e => {
+      if (e.target.files.length) {
+        log('[Chatdown] File selected via browse:', e.target.files[0].name);
+        handleFile(e.target.files[0]);
+      }
+    });
+
+    async function handleFile(file) {
+      log('[Chatdown] handleFile:', file.name, 'type:', file.type, 'size:', file.size);
+
+      if (!file.name.match(/\.html?$/i)) {
+        alert('Please select a saved HTML file.');
+        return;
+      }
+
+      try {
+        const text = await file.text();
+        log('[Chatdown] File read, length:', text.length);
+
+        const result = parseGoogleAIChat(text);
+        log('[Chatdown] Parsed: title=', result.title, 'turns=', result.turns.length);
+
+        if (result.turns.length === 0) {
+          alert('No conversation turns found in this file.\n\nMake sure this is a Google AI Mode page saved with "Save As > Web Page, Complete".');
+          return;
+        }
+
+        parsedConversation = result.turns;
+        chatTitle = result.title;
+        renderChat(result.title, result.turns);
+        showParseNotice(result.info);
+      } catch (err) {
+        console.error('[Chatdown] Error processing file:', err);
+        alert('Error processing file: ' + err.message);
+      }
+    }
+
+    // ========== PARSER ==========
+    // Google rotates its obfuscated class names between builds, so each role
+    // lists the current class plus a more stable semantic fallback. The first
+    // selector that matches a given saved page wins.
+    const QUERY_SELECTORS = [
+      'span.VndcI.veK2kb',                  // current prompt-heading wrapper (one per user turn)
+      '[role="heading"][jsname="mE3zGb"]',  // stabler fallback if the classes change
+    ];
+    const RESPONSE_SELECTORS = [
+      '.pWvJNd',                            // current answer-prose block (cleanest)
+      '[data-subtree="aimc"]',              // stable semantic AI-Mode container (old & new saves)
+    ];
+
+    // Labels Google injects inside the prompt heading, e.g. "You said:".
+    const QUERY_LABEL_CLASS = 'iMqumd';
+    const QUERY_LABEL_TEXT = 'you said:';
+
+    function firstMatchingSelector(doc, selectors) {
+      for (const sel of selectors) {
+        try {
+          if (doc.querySelector(sel)) return sel;
+        } catch (e) { /* invalid/unsupported selector — try the next */ }
+      }
+      return null;
+    }
+
+    // Pull the real prompt out of a heading, language-independently.
+    //   Old saves: heading has one (unclassed) child span = the prompt.
+    //   New saves: heading has [<span class="iMqumd">You said:</span>, <span>prompt</span>].
+    // We drop the known label, keep the rest, and fall back to the last child
+    // (the prompt is always last) so non-English "You said:" labels still work.
+    function extractQuery(heading) {
+      const kids = Array.from(heading.children).filter(el => el.tagName === 'SPAN');
+      if (kids.length) {
+        const real = kids.filter(el =>
+          !el.classList.contains(QUERY_LABEL_CLASS) &&
+          el.textContent.trim().toLowerCase() !== QUERY_LABEL_TEXT
+        );
+        const pick = real.length ? real : kids.slice(-1);
+        const text = pick.map(el => el.textContent).join(' ').replace(/\s+/g, ' ').trim();
+        if (text) return text;
+      }
+      return heading.textContent.replace(/\s+/g, ' ').trim();
+    }
+
+    function parseGoogleAIChat(htmlText) {
+      log('[Chatdown] Parsing HTML, length:', htmlText.length);
+      const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+
+      // Title from <title>, minus the trailing " - Google Search".
+      const titleEl = doc.querySelector('title');
+      const title = titleEl
+        ? titleEl.textContent.replace(/\s*-\s*Google Search\s*$/, '').trim()
+        : 'Chat';
+      log('[Chatdown] Title:', title);
+
+      const qSel = firstMatchingSelector(doc, QUERY_SELECTORS);
+      const rSel = firstMatchingSelector(doc, RESPONSE_SELECTORS);
+      log('[Chatdown] Selectors — query:', qSel, '| response:', rSel);
+
+      const usedFallbackSelector =
+        (!!qSel && qSel !== QUERY_SELECTORS[0]) ||
+        (!!rSel && rSel !== RESPONSE_SELECTORS[0]);
+
+      // Walk prompts + responses together in DOCUMENT ORDER, then pair
+      // structurally: the last heading seen before a response is that
+      // response's prompt. This tolerates injected labels, extra headings and
+      // mismatched counts — unlike the old pair-by-global-index approach that
+      // broke when Google added the "You said:" label.
+      const combined = [qSel, rSel].filter(Boolean).join(', ');
+      const nodes = combined ? Array.from(doc.querySelectorAll(combined)) : [];
+      const isResponse = (el) => !!rSel && el.matches(rSel);
+
+      const turns = [];
+      let pendingQuery = null;
+      let queryCount = 0;
+      let responseCount = 0;
+
+      for (const el of nodes) {
+        if (isResponse(el)) {
+          // Skip a response nested inside another response (defensive dedupe).
+          if (el.parentElement && el.parentElement.closest(rSel)) continue;
+          responseCount++;
+          turns.push({ query: pendingQuery || '', response: cleanResponseHTML(el) });
+          pendingQuery = null;
+        } else {
+          // A prompt heading. Ignore any heading living inside a response block.
+          if (rSel && el.closest(rSel)) continue;
+          queryCount++;
+          pendingQuery = extractQuery(el);
+        }
+      }
+
+      // A trailing prompt with no answer (e.g. the page was saved mid-response),
+      // only meaningful if we actually found real turns first.
+      if (pendingQuery && responseCount > 0) {
+        turns.push({ query: pendingQuery, response: '' });
+      }
+
+      const cleaned = turns.filter(t => t.query || t.response);
+
+      // Did pairing look clean? If not, we surface a best-effort notice.
+      const halfEmpty = cleaned.filter(t => !t.query || !t.response).length;
+      const lowConfidence =
+        cleaned.length > 0 &&
+        (usedFallbackSelector || halfEmpty > 0 || queryCount === 0 || responseCount === 0);
+
+      log('[Chatdown] turns:', cleaned.length, '| queries:', queryCount,
+          '| responses:', responseCount, '| lowConfidence:', lowConfidence);
+
+      return {
+        title,
+        turns: cleaned,
+        info: { queryCount, responseCount, usedFallbackSelector, halfEmpty, lowConfidence },
+      };
+    }
+
+    // ========== RESPONSE CLEANING ==========
+    function cleanResponseHTML(container) {
+      const clone = container.cloneNode(true);
+
+      // Use the FULL pWvJNd container — NOT aimfl (which only has the first sentence)
+
+      // Remove hidden elements (metadata blocks with display:none)
+      clone.querySelectorAll('[style]').forEach(el => {
+        const style = el.getAttribute('style') || '';
+        if (style.includes('display:none') || style.includes('display: none')) {
+          el.remove();
+        }
+      });
+
+      // Remove citation buttons, inline citation spans, and any stray "You said:" label
+      clone.querySelectorAll('button, .txxDge, .uJ19be, .iMqumd').forEach(el => el.remove());
+
+      // Remove follow-up chips, action bars (share/copy/like), related links
+      clone.querySelectorAll('.GyAeWb, .eqAnXb, [aria-label="Related links"]').forEach(el => el.remove());
+
+      // Remove the action bar container (data-subtree="aimba")
+      clone.querySelectorAll('[data-subtree="aimba"]').forEach(el => el.remove());
+
+      // Remove Google footer cruft: "Creating a public link...", "Good/Bad response" buttons,
+      // "AI can make mistakes" disclaimer, share/feedback UI
+      clone.querySelectorAll('.DBd2Wb, .VlQBpc, .OUQe0e, .zkL70c').forEach(el => el.remove());
+
+      // Remove executable/embedded content
+      clone.querySelectorAll('script, style, noscript, iframe, object, embed, svg').forEach(el => el.remove());
+
+      // Remove images (Google UI chrome images, favicons, etc.)
+      clone.querySelectorAll('img').forEach(el => el.remove());
+
+      // Strip Google JS attributes
+      clone.querySelectorAll('*').forEach(el => {
+        const attrsToRemove = [];
+        for (const attr of el.attributes) {
+          const n = attr.name;
+          if (n.startsWith('on') || n.startsWith('js') ||
+              n.startsWith('data-wiz') || n.startsWith('data-soylog') ||
+              n.startsWith('data-sfc') || n.startsWith('data-amic') ||
+              n.startsWith('data-icl') || n.startsWith('data-tr') ||
+              n === 'data-ved' || n === 'data-hveid' ||
+              n === 'data-processed' || n === 'data-complete' ||
+              n === 'data-animation-skip' || n === 'data-animation-atomic' ||
+              n === 'data-subtree' || n === 'data-container-id' ||
+              n === 'data-msei' || n === 'data-mseni' ||
+              n === 'data-mssp' || n === 'data-mstk' ||
+              n === 'data-scope-id' || n === 'data-asrc' ||
+              n === 'data-sae' || n === 'data-key' || n === 'data-value' ||
+              n === 'jsuid' || n === 'jsname' || n === 'jsmodel' ||
+              n === 'jscontroller' || n === 'jsaction' ||
+              n === 'decode-data-ved') {
+            attrsToRemove.push(n);
+          }
+        }
+        attrsToRemove.forEach(a => el.removeAttribute(a));
+      });
+
+      return normalizeHTML(clone);
+    }
+
+    function normalizeHTML(container) {
+      // Convert Google heading divs to h3
+      container.querySelectorAll('[role="heading"]').forEach(h => {
+        const h3 = document.createElement('h3');
+        h3.textContent = h.textContent.trim();
+        h.replaceWith(h3);
+      });
+
+      // Get cleaned innerHTML
+      let html = container.innerHTML;
+
+      // Remove HTML comments
+      html = html.replace(/<!--[\s\S]*?-->/g, '');
+
+      // Remove aria-hidden spans with just &nbsp;
+      html = html.replace(/<span[^>]*aria-hidden="true"[^>]*>[^<]*<\/span>/g, '');
+
+      // Remove empty spans and divs
+      html = html.replace(/<span[^>]*>\s*<\/span>/gi, '');
+      html = html.replace(/<div[^>]*>\s*<\/div>/gi, '');
+
+      // Clean up excessive whitespace between tags
+      html = html.replace(/>\s+</g, '> <');
+
+      // Second pass on empty elements after cleanup
+      html = html.replace(/<span[^>]*>\s*<\/span>/gi, '');
+      html = html.replace(/<div[^>]*>\s*<\/div>/gi, '');
+
+      return html.trim();
+    }
+
+    // ========== RENDERING ==========
+    function renderChat(title, turns) {
+      dropzone.hidden = true;
+      const container = document.getElementById('chat-container');
+      container.hidden = false;
+
+      document.getElementById('chat-title').textContent = title;
+      const messagesEl = document.getElementById('chat-messages');
+      messagesEl.innerHTML = '';
+
+      turns.forEach(turn => {
+        if (turn.query) {
+          const userMsg = document.createElement('div');
+          userMsg.className = 'message user';
+          const senderDiv = document.createElement('div');
+          senderDiv.className = 'sender';
+          senderDiv.textContent = 'You';
+          const bubbleDiv = document.createElement('div');
+          bubbleDiv.className = 'bubble';
+          bubbleDiv.textContent = turn.query;
+          userMsg.appendChild(senderDiv);
+          userMsg.appendChild(bubbleDiv);
+          messagesEl.appendChild(userMsg);
+        }
+
+        if (turn.response) {
+          const aiMsg = document.createElement('div');
+          aiMsg.className = 'message ai';
+          const senderDiv = document.createElement('div');
+          senderDiv.className = 'sender';
+          senderDiv.textContent = 'Google AI';
+          const bubbleDiv = document.createElement('div');
+          bubbleDiv.className = 'bubble';
+          bubbleDiv.innerHTML = turn.response;
+          aiMsg.appendChild(senderDiv);
+          aiMsg.appendChild(bubbleDiv);
+          messagesEl.appendChild(aiMsg);
+        }
+      });
+
+      window.scrollTo(0, 0);
+    }
+
+    // ========== BACK BUTTON ==========
+    document.getElementById('back-btn').addEventListener('click', () => {
+      document.getElementById('chat-container').hidden = true;
+      dropzone.hidden = false;
+      fileInput.value = '';
+      parsedConversation = [];
+      chatTitle = '';
+      document.getElementById('parse-notice').hidden = true;
+    });
+
+    // ========== PARSE NOTICE ==========
+    // Non-blocking banner shown when the page looks like a different Google AI
+    // Mode version than expected, so the result is clearly "best effort".
+    function showParseNotice(info) {
+      const notice = document.getElementById('parse-notice');
+      if (info && info.lowConfidence) {
+        document.getElementById('parse-notice-text').textContent =
+          'Heads up: this page looks like a different version of Google AI Mode than expected, so this is a best-effort view — a few messages may be missing or out of order.';
+        notice.hidden = false;
+      } else {
+        notice.hidden = true;
+      }
+    }
+
+    document.getElementById('parse-notice-close').addEventListener('click', () => {
+      document.getElementById('parse-notice').hidden = true;
+    });
+
+    // ========== MARKDOWN EXPORT ==========
+    function htmlToMarkdown(html) {
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+
+      function walk(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          return node.textContent;
+        }
+        if (node.nodeType === Node.COMMENT_NODE) return '';
+        if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+        const tag = node.tagName.toLowerCase();
+        const children = () => Array.from(node.childNodes).map(walk).join('');
+
+        switch (tag) {
+          case 'h1': return `# ${children().trim()}\n\n`;
+          case 'h2': return `## ${children().trim()}\n\n`;
+          case 'h3': return `### ${children().trim()}\n\n`;
+          case 'h4': return `#### ${children().trim()}\n\n`;
+          case 'strong':
+          case 'b': {
+            const t = children().trim();
+            return t ? `**${t}**` : '';
+          }
+          case 'em':
+          case 'i': {
+            const t = children().trim();
+            return t ? `*${t}*` : '';
+          }
+          case 'mark': {
+            const t = children().trim();
+            return t ? `==${t}==` : '';
+          }
+          case 'code':
+            if (node.parentElement && node.parentElement.tagName.toLowerCase() === 'pre') {
+              return children();
+            }
+            return `\`${children().trim()}\``;
+          case 'pre': {
+            const codeEl = node.querySelector('code');
+            const text = codeEl ? codeEl.textContent : node.textContent;
+            return `\`\`\`\n${text.trim()}\n\`\`\`\n\n`;
+          }
+          case 'ul': {
+            const items = Array.from(node.children)
+              .filter(c => c.tagName && c.tagName.toLowerCase() === 'li')
+              .map(li => `- ${walk(li).trim()}`);
+            return items.join('\n') + '\n\n';
+          }
+          case 'ol': {
+            const items = Array.from(node.children)
+              .filter(c => c.tagName && c.tagName.toLowerCase() === 'li')
+              .map((li, i) => `${i + 1}. ${walk(li).trim()}`);
+            return items.join('\n') + '\n\n';
+          }
+          case 'li': return children();
+          case 'br': return '\n';
+          case 'a': {
+            const href = node.getAttribute('href');
+            const text = children().trim();
+            if (href && text) return `[${text}](${href})`;
+            return text;
+          }
+          case 'table': {
+            const rows = Array.from(node.querySelectorAll('tr'));
+            if (rows.length === 0) return '';
+            const result = [];
+            rows.forEach((row, ri) => {
+              const cells = Array.from(row.querySelectorAll('td, th')).map(c => c.textContent.trim());
+              result.push('| ' + cells.join(' | ') + ' |');
+              if (ri === 0) {
+                result.push('| ' + cells.map(() => '---').join(' | ') + ' |');
+              }
+            });
+            return result.join('\n') + '\n\n';
+          }
+          case 'p': {
+            const t = children().trim();
+            return t ? t + '\n\n' : '';
+          }
+          case 'div': {
+            const t = children().trim();
+            return t ? t + '\n' : '';
+          }
+          case 'script':
+          case 'style':
+          case 'noscript':
+          case 'svg':
+          case 'img':
+          case 'button':
+            return '';
+          default:
+            return children();
+        }
+      }
+
+      let result = walk(temp);
+      result = result.replace(/\n{3,}/g, '\n\n');
+      return result.trim();
+    }
+
+    function conversationToMarkdown(turns, title) {
+      let md = `# ${title}\n\n`;
+
+      turns.forEach((turn, i) => {
+        if (turn.query) {
+          md += `## You\n\n${turn.query}\n\n`;
+        }
+
+        if (turn.response) {
+          md += `## Google AI\n\n`;
+          md += htmlToMarkdown(turn.response);
+          md += '\n\n';
+        }
+
+        if (i < turns.length - 1) {
+          md += '---\n\n';
+        }
+      });
+
+      return md.trim() + '\n';
+    }
+
+    document.getElementById('copy-md-btn').addEventListener('click', async () => {
+      const md = conversationToMarkdown(parsedConversation, chatTitle);
+      try {
+        await navigator.clipboard.writeText(md);
+      } catch {
+        // Fallback for file:// protocol where clipboard API may not work
+        const ta = document.createElement('textarea');
+        ta.value = md;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+
+      const btn = document.getElementById('copy-md-btn');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copy as Markdown';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+
+    // ========== MARKDOWN DOWNLOAD ==========
+    function safeFilename(name) {
+      const base = (name || 'chat')
+        .replace(/[\\/:*?"<>|]+/g, '')   // strip characters illegal in filenames
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 80);
+      return (base || 'chat') + '.md';
+    }
+
+    document.getElementById('download-md-btn').addEventListener('click', () => {
+      const md = conversationToMarkdown(parsedConversation, chatTitle);
+      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = safeFilename(chatTitle);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+
+    log('[Chatdown] App loaded and ready');
+  </script>
+</body>
+</html>

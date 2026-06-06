@@ -10,7 +10,7 @@ You save the Google page, drag the `.html` file onto Chatdown, and it rebuilds t
 
 > 🔒 **Completely private — your chats never leave your device.** Everything is rendered right in your own browser. Nothing is uploaded, *ever* — no server, no account, no tracking — so **nobody but you ever sees the conversations you open here.** Want to be extra sure? Run it fully offline (see [Private by design](#-private-by-design) below).
 
-<!-- 📺 Demo video: add your link here -->
+<!-- 📺 Demo video: soon -->
 
 ---
 
@@ -18,7 +18,7 @@ You save the Google page, drag the `.html` file onto Chatdown, and it rebuilds t
 
 1. **Have your chat in Google AI Mode.** Use Google Search → AI Mode and ask whatever you like.
 2. **Save the page.** Press `Ctrl/Cmd + S` (or right-click → *Save As*) and choose **"Webpage, Complete"**. You'll get an `.html` file (and a folder of assets you can ignore).
-3. **Open Chatdown.** Go to the live page: `https://<your-username>.github.io/chatdown/`
+3. **Open Chatdown.** Go to the live page: [Chatdown](https://maxsikorski.github.io/chatdown/)
 4. **Drag the `.html` file** onto the drop zone (or click **Browse Files**).
 5. **Read, theme, and export.** Toggle light/dark with the ☀/🌙 button, then **Copy as Markdown** — or click the **⬇ download** button to save a `.md` file — to take the whole conversation anywhere.
 

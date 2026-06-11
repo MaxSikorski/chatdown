@@ -10,7 +10,9 @@ You save the Google page, drag the `.html` file onto Chatdown, and it rebuilds t
 
 > 🔒 **Completely private — your chats never leave your device.** Everything is rendered right in your own browser. Nothing is uploaded, *ever* — no server, no account, no tracking — so **nobody but you ever sees the conversations you open here.** Want to be extra sure? Run it fully offline (see [Private by design](#-private-by-design) below).
 
-<!-- 📺 Demo video: soon -->
+[![Watch Chatdown Demo](https://youtube.com)](https://www.youtube.com/watch?v=_b-MaFoTrjs)
+
+
 
 ---
 
